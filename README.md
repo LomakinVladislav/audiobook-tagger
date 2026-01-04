@@ -12,7 +12,7 @@
 ```python main.py```
 
 Структура проекта:
-File_tagger/
+audiobook_tagger/
 
 ├── example.mp3          # файл с образцовыми тегами
 
