@@ -4,3 +4,27 @@
 venv
 result
 source
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# PyInstaller
+build/
+dist/
+*.spec          # если не хотите сохранять .spec-файл (обычно его оставляют, но можно закомментировать)
+# !*.spec        # раскомментируйте, если хотите сохранить .spec файл
+
+# IDE
+.vscode/
+.idea/
+
+# Логи и временные файлы
+*.log
+*.tmp
