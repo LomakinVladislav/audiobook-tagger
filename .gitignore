@@ -1,30 +1,32 @@
-*.py[cod]  
-.env
-.venv
-venv
-result
-source
-
-
 # Python
 __pycache__/
-*.py[cod]
-*.so
-*.egg-info/
-.venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
 venv/
+env/
 ENV/
+.env
 
 # PyInstaller
 build/
 dist/
-*.spec          # если не хотите сохранять .spec-файл (обычно его оставляют, но можно закомментировать)
-# !*.spec        # раскомментируйте, если хотите сохранить .spec файл
+*.spec
+*.exe
+*.zip
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Логи и временные файлы
 *.log
 *.tmp
+.mp3
