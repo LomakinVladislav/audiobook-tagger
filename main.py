@@ -8,9 +8,13 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 
 from mutagen.mp3 import MP3
+from mutagen.wave import WAVE
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TPE2, TDRC, TRCK, TCON
 
 from dataclasses import dataclass, field
+
+# Поддерживаемые форматы аудиофайлов (расширения в нижнем регистре)
+AUDIO_EXTENSIONS = (".mp3", ".wav")
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -63,6 +67,21 @@ def build_track_title(
     if range_idx >= 0 and prefix and chapter == 1:
         title = f"{prefix} {title}"
     return title
+
+
+def find_audio_files(source_dir: Path) -> list[Path]:
+    """
+    Ищет все поддерживаемые аудиофайлы (mp3, wav) в папке, без учёта регистра
+    расширения. Path.glob чувствителен к регистру на некоторых системах, поэтому
+    фильтруем сами через iterdir() + suffix.lower(), а не плодим отдельные glob()
+    на каждый вариант регистра (что дало бы дубликаты на Windows).
+    """
+    files = [
+        p
+        for p in source_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in AUDIO_EXTENSIONS
+    ]
+    return sorted(files)
 
 
 def bind_shortcuts(widget, kind="entry"):
@@ -585,7 +604,7 @@ class AudiobookTaggerApp(ctk.CTk):
             master=self,
             initial=self.range_settings,
             on_save=self._on_ranges_saved,
-            total_tracks=0,  # можно подставить len(sorted(source.glob("*.mp3"))) при желании
+            total_tracks=0,  # можно подставить len(find_audio_files(source)) при желании
         )
 
     def _on_ranges_saved(self, settings: RangeSettings):
@@ -708,27 +727,27 @@ class AudiobookTaggerApp(ctk.CTk):
 
         result_dir.mkdir(parents=True, exist_ok=True)
 
-        mp3_files = sorted(source_dir.glob("*.mp3"))
-        if not mp3_files:
-            self._log("В исходной папке не найдено mp3 файлов!")
+        audio_files = find_audio_files(source_dir)
+        if not audio_files:
+            self._log("В исходной папке не найдено mp3/wav файлов!")
             self._finish()
             return
 
-        total = len(mp3_files)
+        total = len(audio_files)
         self._log(f"Найдено файлов: {total}")
 
         processed = 0
-        for offset, mp3_file in enumerate(mp3_files):
+        for offset, audio_file in enumerate(audio_files):
             if self.stop_event.is_set():
                 self._log("Обработка остановлена пользователем.")
                 break
 
             index = settings["start_number"] + offset
-            self._log(f"\n[{offset + 1}/{total}] {mp3_file.name}")
+            self._log(f"\n[{offset + 1}/{total}] {audio_file.name}")
 
-            result_file = result_dir / mp3_file.name
+            result_file = result_dir / audio_file.name
             try:
-                shutil.copy2(mp3_file, result_file)
+                shutil.copy2(audio_file, result_file)
                 self._log("  Скопирован")
 
                 if self._apply_tags(result_file, index, total, settings):
@@ -744,7 +763,17 @@ class AudiobookTaggerApp(ctk.CTk):
 
     def _apply_tags(self, file_path, track_number, total_tracks, settings):
         try:
-            audio = MP3(file_path, ID3=ID3)
+            suffix = file_path.suffix.lower()
+            if suffix == ".mp3":
+                audio = MP3(file_path, ID3=ID3)
+            elif suffix == ".wav":
+                # WAVE-файлы тоже поддерживают ID3-теги (в чанке "id3 "),
+                # интерфейс у mutagen тот же: add_tags()/dict-style/save()
+                audio = WAVE(file_path)
+            else:
+                self._log(f"  Неподдерживаемый формат файла: {suffix}")
+                return False
+
             try:
                 audio.add_tags()
             except Exception:
